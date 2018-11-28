@@ -1,52 +1,70 @@
 # preprocess
-import numpy as np
 import csv
+import numpy as np
 
-with open("train.csv",mode='r',encoding='utf-8',newline='') as f:
-	data = csv.reader(f)
-	matrix1 = []
-	for row in data:
-		matrix1.append(row)
-	matrix1 = np.array(matrix1)
-	# label1 = matrix1[0][1:]
-
-with open("Enrollment Data (collated final).csv",mode='r',encoding='utf-8',newline='') as f:
-	# drive里面更新了Enrollment Data (collated final).csv，手动删除了一个重复病人
-	data = csv.reader(f)
-	matrix2 = []
-	for row in data:
-		matrix2.append(row)
-	matrix2 = np.array(matrix2)
-	item2 = matrix2[0]
-	# print(item2)
-
-patient_id1 = matrix1[1:,2]
-patient_id2 = matrix2[1:,1]
-
-for row_num,id_num in enumerate(patient_id2):
-	if id_num in patient_id1:
-		item2 = np.concatenate((item2,matrix2[row_num+1,:]),axis=0)
-matrix2 = item2.reshape(-1,8)
-matrix1 = np.delete(matrix1,0,axis=1)
-matrix2 = matrix2[matrix2[:,1].argsort()][::-1]
-matrix1 = matrix1[matrix1[:,1].argsort()][::-1]
-
-y = matrix1[:,-1].reshape(-1,1)
-# print(y.shape)
-training_data = np.concatenate((matrix2,y),axis=1)
-print(training_data.shape)
-
-with open('training_data.csv','w',newline='') as w:
-	writer = csv.writer(w)
-	for row_data in training_data:
-		writer.writerow(row_data)
-	w.close()
-
-np.save('training_data.npy',training_data)
-print("preprocess done!")
+def read_csv(filename):
+	with open(filename,mode='r',encoding='utf8',newline='') as f:
+		data = csv.reader(f)
+		matrix = []
+		for row in data:
+			matrix.append(row)
+		matrix = np.array(matrix)
+		label = matrix[0]
+		f.close()
+	return matrix,label
 
 
+def write_csv(csv_data,filename):
+	with open(filename,'w',newline='') as w:
+		writer = csv.writer(w)
+		for row in csv_data:
+			writer.writerow(row)
+		w.close()
+	print(filename + ' done!')
 
 
+def combine(enrollid,combineid,item,combine_matrix):
+	for row_num,id_num in enumerate(enrollid):
+		if id_num in combineid:
+			item = np.concatenate((item,combine_matrix[row_num+1,:]),axis=0)
+		combined = item.reshape(-1,8)
+		combined = combined[combined[:,1].argsort()][::-1]
+	return combined
 
 
+def preprocess():
+	filename = ['Enrollment Data (collated final).csv',
+				'train.csv','test.csv']
+
+	enroll_matrix, enroll_label = read_csv(filename[0])
+	train_matrix, train_label = read_csv(filename[1])
+	test_matrix, test_label = read_csv(filename[2])
+
+	enroll_id = enroll_matrix[1:,1]
+	train_id = train_matrix[1:,2]
+	test_id = test_matrix[1:,2]
+
+	train_combined = combine(enrollid=enroll_id,combineid=train_id,item=enroll_label,combine_matrix=enroll_matrix)
+	test_combined = combine(enrollid=enroll_id,combineid=test_id,item=enroll_label,combine_matrix=enroll_matrix)
+
+	train_matrix = np.delete(train_matrix,0,axis=1)
+	train_matrix = train_matrix[train_matrix[:,1].argsort()][::-1]
+	test_matrix = np.delete(test_matrix,0,axis=1)
+	test_matrix = test_matrix[test_matrix[:,1].argsort()][::-1]
+
+	train_label = train_matrix[:,-1].reshape(-1,1)
+	test_label = test_matrix[:,-1].reshape(-1,1)
+
+	training_data = np.concatenate((train_combined,train_label),axis=1)
+	testing_data = np.concatenate((test_combined,test_label),axis=1)
+	print(training_data.shape,testing_data.shape)
+
+	# saving csv
+	# write_csv(training_data,'training_data.csv')
+	# write_csv(testing_data,'testing_data.csv')
+
+	# saving npy
+	np.save('training_data.npy',training_data)
+	np.save('testing_data.npy',testing_data)
+
+preprocess()
