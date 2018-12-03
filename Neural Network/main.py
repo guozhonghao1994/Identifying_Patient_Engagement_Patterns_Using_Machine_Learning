@@ -2,6 +2,9 @@
 import tensorflow as tf
 import numpy as np
 
+load_model = 0
+save_model = 1
+
 def read_data(filename1,filename2):
 	
 	training_data = np.load(filename1)
@@ -48,8 +51,18 @@ accuracy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32))
 
 with tf.Session() as sess:
 	sess.run(tf.global_variables_initializer())
+	saver = tf.train.Saver()
+
+	if load_model:
+		saver.restore(sess,'./saved_model/model.ckpt')
+		print("model loaded!")
+
 	for i in range(200):
 		train_step.run(feed_dict={x:train_data,y_:train_label})
 		train_accuracy = accuracy.eval(feed_dict={x:train_data,y_:train_label})
 		test_accuracy = accuracy.eval(feed_dict={x:test_data,y_:test_label})
 		print('step %d, train_accuracy %g, test_accuracy %f' % (i,train_accuracy,test_accuracy))
+
+	if save_model:
+		saver.save(sess,'./saved_model/model.ckpt') 
+		print("model saved!")
